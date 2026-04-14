@@ -9,7 +9,7 @@ APP_ID = "YD5038"
 SECRET_KEY = "WdX2XVTDnV8dmpc2GMl4EaDW9lMH2DTT"
 TELEGRAM_BOT_TOKEN = "8660649540:AAECvvBwKYk8vz6DXQSA82CNRe1dupqMnj4"
 
-CALLBACK_URL = "https://your-domain.com/lgpay_callback"
+CALLBACK_URL = "https://nexus-pay.onrender.com/lgpay_callback"
 
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 
