@@ -1,7 +1,7 @@
 import requests
 import hashlib
 import time
-from flask import Flask, request
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
@@ -15,7 +15,17 @@ CALLBACK_URL = f"{BASE_URL}/lgpay_callback"
 
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 
-# ================= USER STATE =================
+# 🔥 MULTIPLE TRADE TYPES (AUTO TRY)
+TRADE_TYPES = [
+    "UPI",
+    "UPI_IN",
+    "INDIA",
+    "INR",
+    "PAYIN",
+    "UPI_INDIA"
+]
+
+# ================= MEMORY =================
 user_state = {}
 orders = {}
 
@@ -27,19 +37,22 @@ def generate_sign(data, key):
     stringA = f"{stringA}&key={key}"
     return hashlib.md5(stringA.encode()).hexdigest().upper()
 
-# ================= TELEGRAM =================
+# ================= TELEGRAM SEND =================
 def send_message(chat_id, text):
-    requests.post(f"{TELEGRAM_API}/sendMessage", json={
-        "chat_id": chat_id,
-        "text": text
-    })
+    try:
+        requests.post(f"{TELEGRAM_API}/sendMessage", json={
+            "chat_id": chat_id,
+            "text": text
+        }, timeout=10)
+    except:
+        pass
 
-# ================= WEBHOOK =================
-@app.route('/telegram_webhook', methods=['POST'])
+# ================= TELEGRAM WEBHOOK =================
+@app.route("/telegram_webhook", methods=["POST"])
 def telegram_webhook():
     data = request.get_json()
-    message = data.get("message", {})
 
+    message = data.get("message", {})
     chat_id = message.get("chat", {}).get("id")
     text = message.get("text", "").strip()
 
@@ -47,12 +60,12 @@ def telegram_webhook():
         return "ok"
 
     # START
-    if text.lower() == "/pay":
+    if text.lower() in ["#pay", "/pay"]:
         user_state[chat_id] = "WAIT_AMOUNT"
-        send_message(chat_id, "💰 Enter amount (example: 2000)")
+        send_message(chat_id, "💰 Enter amount (example: 5000)")
         return "ok"
 
-    # ENTER AMOUNT
+    # AMOUNT INPUT
     if user_state.get(chat_id) == "WAIT_AMOUNT":
 
         if not text.replace(".", "", 1).isdigit():
@@ -65,13 +78,14 @@ def telegram_webhook():
             send_message(chat_id, "❌ Amount must be > 0")
             return "ok"
 
-        order_sn = f"PAYIN_{chat_id}_{int(time.time())}"
+        order_sn = f"ORD_{chat_id}_{int(time.time())}"
 
         try:
-            res = create_payin(order_sn, amount)
+            response = create_payin(order_sn, amount)
 
-            if res.get("status") == 1:
-                pay_url = res["data"]["pay_url"]
+            if response.get("status") == 1:
+
+                pay_url = response["data"]["pay_url"]
 
                 orders[order_sn] = {
                     "chat_id": chat_id,
@@ -79,10 +93,13 @@ def telegram_webhook():
                     "status": "PENDING"
                 }
 
-                send_message(chat_id, f"💳 Pay here:\n{pay_url}")
+                send_message(
+                    chat_id,
+                    f"💳 Payment Link:\n{pay_url}\n\n⏳ Waiting for payment..."
+                )
 
             else:
-                send_message(chat_id, f"❌ Failed: {res.get('msg')}")
+                send_message(chat_id, f"❌ All trade_type failed:\n{response.get('msg')}")
 
         except Exception as e:
             print("ERROR:", e)
@@ -93,26 +110,39 @@ def telegram_webhook():
 
     return "ok"
 
-# ================= CREATE PAY-IN =================
+# ================= AUTO PAY-IN =================
 def create_payin(order_sn, amount):
     url = "https://www.lg-pay.com/api/order/create"
 
-    data = {
-        "app_id": APP_ID,
-        "trade_type": "test",  # ⚠️ change to real later
-        "order_sn": order_sn,
-        "money": int(amount * 100),
-        "notify_url": CALLBACK_URL,
-        "remark": "telegram"
-    }
+    for trade in TRADE_TYPES:
 
-    data["sign"] = generate_sign(data, SECRET_KEY)
+        payload = {
+            "app_id": APP_ID,
+            "trade_type": trade,
+            "order_sn": order_sn,
+            "money": int(amount * 100),
+            "notify_url": CALLBACK_URL,
+            "remark": "telegram_user"
+        }
 
-    res = requests.post(url, data=data, timeout=15)
-    return res.json()
+        payload["sign"] = generate_sign(payload, SECRET_KEY)
+
+        try:
+            res = requests.post(url, data=payload, timeout=15).json()
+
+            print("TRY:", trade, res)
+
+            if res.get("status") == 1:
+                print("SUCCESS TRADE TYPE:", trade)
+                return res
+
+        except Exception as e:
+            print("ERROR TRY:", trade, e)
+
+    return {"status": 0, "msg": "No valid trade_type found"}
 
 # ================= CALLBACK =================
-@app.route('/lgpay_callback', methods=['POST'])
+@app.route("/lgpay_callback", methods=["POST"])
 def lgpay_callback():
     data = request.form.to_dict()
 
@@ -126,16 +156,21 @@ def lgpay_callback():
         if order_sn in orders:
             chat_id = orders[order_sn]["chat_id"]
 
-            send_message(chat_id, "✅ Payment Successful")
+            send_message(chat_id, "✅ Payment Successful 🎉")
 
             orders[order_sn]["status"] = "SUCCESS"
 
-        print("✅ CALLBACK VERIFIED:", order_sn)
+        print("CALLBACK OK:", order_sn)
         return "ok"
 
     else:
-        print("❌ INVALID SIGN")
+        print("INVALID CALLBACK")
         return "invalid"
+
+# ================= HEALTH =================
+@app.route("/")
+def home():
+    return jsonify({"status": "running"})
 
 # ================= RUN =================
 if __name__ == "__main__":
