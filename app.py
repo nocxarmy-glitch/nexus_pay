@@ -17,13 +17,30 @@ TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 
 # 🔥 MULTIPLE TRADE TYPES (AUTO TRY)
 TRADE_TYPES = [
-    "UPI",
-    "UPI_IN",
-    "INDIA",
-    "INR",
-    "PAYIN",
-    "UPI_INDIA"
+    # --- Standard Keywords ---
+    "UPI", "UPI_IN", "INDIA", "INR", "PAYIN", "UPI_INDIA",
+    
+    # --- Integration Specific ---
+    "UPI_INTENT",      # App-to-app redirect ke liye
+    "UPI_COLLECT",     # VPA request (Pull flow) ke liye
+    "UPI_QR",          # QR code flow ke liye
+    "UPI_WEB",         # Desktop web checkout ke liye
+    "UPI_JS",          # JavaScript based integration
+    
+    # --- Merchant & Business Specific ---
+    "P2M",             # Person-to-Merchant (Standard)
+    "P2P",             # Person-to-Person (Personal)
+    "MERCHANT",        # Direct merchant channel
+    "DIRECT_UPI",      # Bin gateway direct integration
+    "RETAIL",          # Consumer payments
+    
+    # --- Generic Fallbacks ---
+    "PAYMENT", "ONLINE", "NET_BANKING", "IMPS", "WALLET",
+    
+    # --- Case Variations (Kuch gateways sensitive hote hain) ---
+    "upi", "upi_in", "india", "payin", "upi_intent", "p2m"
 ]
+
 
 # ================= MEMORY =================
 user_state = {}
