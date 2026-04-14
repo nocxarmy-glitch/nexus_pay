@@ -17,28 +17,12 @@ TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 
 # 🔥 MULTIPLE TRADE TYPES (AUTO TRY)
 TRADE_TYPES = [
-    # --- Standard Keywords ---
-    "UPI", "UPI_IN", "INDIA", "INR", "PAYIN", "UPI_INDIA",
-    
-    # --- Integration Specific ---
-    "UPI_INTENT",      # App-to-app redirect ke liye
-    "UPI_COLLECT",     # VPA request (Pull flow) ke liye
-    "UPI_QR",          # QR code flow ke liye
-    "UPI_WEB",         # Desktop web checkout ke liye
-    "UPI_JS",          # JavaScript based integration
-    
-    # --- Merchant & Business Specific ---
-    "P2M",             # Person-to-Merchant (Standard)
-    "P2P",             # Person-to-Person (Personal)
-    "MERCHANT",        # Direct merchant channel
-    "DIRECT_UPI",      # Bin gateway direct integration
-    "RETAIL",          # Consumer payments
-    
-    # --- Generic Fallbacks ---
-    "PAYMENT", "ONLINE", "NET_BANKING", "IMPS", "WALLET",
-    
-    # --- Case Variations (Kuch gateways sensitive hote hain) ---
-    "upi", "upi_in", "india", "payin", "upi_intent", "p2m"
+    "UPI",
+    "UPI_IN",
+    "INDIA",
+    "INR",
+    "PAYIN",
+    "UPI_INDIA"
 ]
 
 
@@ -79,7 +63,7 @@ def telegram_webhook():
     # START
     if text.lower() in ["#pay", "/pay"]:
         user_state[chat_id] = "WAIT_AMOUNT"
-        send_message(chat_id, "💰 Enter amount (example: 5000)")
+        send_message(chat_id, "💰 Enter amount ")
         return "ok"
 
     # AMOUNT INPUT
